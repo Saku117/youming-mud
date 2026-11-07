@@ -375,164 +375,162 @@ export default function MudPage() {
             <StatusBar state={gameState} />
           </div>
 
-          {/* 若触发了 Interrupt 确认机制，展示 ConfirmCard */}
-          {activeConfirm && (
-            <div className="shrink-0">
-              <ConfirmCard
-                data={activeConfirm}
-                onConfirm={handleConfirmAction}
-                onCancel={handleCancelAction}
-                isLoading={isLoading}
-              />
-            </div>
-          )}
-
-          {/* 终端界面 */}
+          {/* 终端界面（包含消息流、流底 ConfirmCard 与内嵌吸底控制栏） */}
           <Terminal
             messages={messages}
             isTyping={isTyping}
             onSkipTypewriter={handleSkipTypewriter}
-          />
+            confirmCard={
+              activeConfirm ? (
+                <ConfirmCard
+                  data={activeConfirm}
+                  onConfirm={handleConfirmAction}
+                  onCancel={handleCancelAction}
+                  isLoading={isLoading}
+                />
+              ) : undefined
+            }
+            footer={
+              <>
+                {/* 三大地点跳转按钮 */}
+                <div className="space-y-1">
+                  <div className="text-[11px] text-emerald-500/80 flex items-center justify-between">
+                    <span>御风御剑 · 地点穿梭（精力 -1）：</span>
+                    <span className="text-[10px] text-emerald-600">当前：{gameState.location}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {LOCATIONS.map((loc) => {
+                      const isCurrent = gameState.location === loc;
+                      return (
+                        <button
+                          key={loc}
+                          type="button"
+                          disabled={isCurrent || isLoading || gameState.energy < 1 || !!activeConfirm}
+                          onClick={() => handleMove(loc)}
+                          className={`py-2 px-1 text-xs sm:text-sm font-semibold rounded-md border transition flex flex-col items-center justify-center cursor-pointer ${
+                            isCurrent
+                              ? 'bg-emerald-950/40 text-emerald-500 border-emerald-900/60 cursor-default'
+                              : gameState.energy < 1
+                              ? 'bg-black/40 text-neutral-600 border-neutral-900 cursor-not-allowed'
+                              : 'bg-emerald-950/70 hover:bg-emerald-900/80 text-emerald-200 border-emerald-700/60 active:scale-[0.98]'
+                          }`}
+                        >
+                          <span>{loc}</span>
+                          <span className="text-[10px] opacity-75">
+                            {isCurrent ? '(当前)' : '-1 精力'}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-          {/* 下部操控区 */}
-          <div className="shrink-0 space-y-2 bg-[#0c120f] border border-emerald-950 p-2.5 sm:p-3 rounded-lg">
-            {/* 三大地点跳转按钮 */}
-            <div className="space-y-1">
-              <div className="text-[11px] text-emerald-500/80 flex items-center justify-between">
-                <span>御风御剑 · 地点穿梭（精力 -1）：</span>
-                <span className="text-[10px] text-emerald-600">当前：{gameState.location}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {LOCATIONS.map((loc) => {
-                  const isCurrent = gameState.location === loc;
-                  return (
+                {/* 常用快捷指令 & 剧情核心交互 */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                  <span className="text-[11px] text-emerald-600 shrink-0">行动：</span>
+                  {gameState.location === '宗门大殿' && (
+                    <>
+                      {gameState.quests['渡口引魂'] === '待复命' ? (
+                        <button
+                          type="button"
+                          onClick={() => setInputCommand('复命结算')}
+                          className="px-2.5 py-1 rounded bg-amber-900/80 border border-amber-500 text-amber-200 text-xs shrink-0 cursor-pointer font-bold animate-pulse"
+                        >
+                          ★ 交付主线 (+300修为)
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setInputCommand('接主线任务')}
+                          className="px-2 py-1 rounded bg-emerald-950/80 border border-emerald-700 text-emerald-300 text-xs shrink-0 cursor-pointer"
+                        >
+                          接主线「渡口引魂」
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setInputCommand('采药搜集灵草')}
+                        className="px-2 py-1 rounded bg-[#0b1410] border border-emerald-800 text-emerald-300 text-xs shrink-0 cursor-pointer"
+                      >
+                        采药 (搜集3味灵草)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setInputCommand('开炉炼丹')}
+                        className="px-2 py-1 rounded bg-cyan-950/60 border border-cyan-700/70 text-cyan-200 text-xs shrink-0 cursor-pointer"
+                      >
+                        开炉炼丹 (+120修为)
+                      </button>
+                    </>
+                  )}
+                  {gameState.location === '鬼市' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setInputCommand('置办引魂灯')}
+                        className="px-2 py-1 rounded bg-amber-950/60 border border-amber-700/70 text-amber-200 text-xs shrink-0 cursor-pointer"
+                      >
+                        置办引魂灯 (交易)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setInputCommand('赌命')}
+                        className="px-2 py-1 rounded bg-rose-950/60 border border-rose-700/70 text-rose-200 text-xs shrink-0 cursor-pointer"
+                      >
+                        夜枭赌局 (赌命)
+                      </button>
+                    </>
+                  )}
+                  {gameState.location === '幽冥渡口' && (
                     <button
-                      key={loc}
                       type="button"
-                      disabled={isCurrent || isLoading || gameState.energy < 1 || !!activeConfirm}
-                      onClick={() => handleMove(loc)}
-                      className={`py-2 px-1 text-xs sm:text-sm font-semibold rounded-md border transition flex flex-col items-center justify-center cursor-pointer ${
-                        isCurrent
-                          ? 'bg-emerald-950/40 text-emerald-500 border-emerald-900/60 cursor-default'
-                          : gameState.energy < 1
-                          ? 'bg-black/40 text-neutral-600 border-neutral-900 cursor-not-allowed'
-                          : 'bg-emerald-950/70 hover:bg-emerald-900/80 text-emerald-200 border-emerald-700/60 active:scale-[0.98]'
-                      }`}
+                      onClick={() => setInputCommand('渡口引魂')}
+                      className="px-2.5 py-1 rounded bg-emerald-900/90 border border-emerald-500 text-emerald-100 text-xs shrink-0 cursor-pointer font-bold animate-pulse"
                     >
-                      <span>{loc}</span>
-                      <span className="text-[10px] opacity-75">
-                        {isCurrent ? '(当前)' : '-1 精力'}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 常用快捷指令 & 剧情核心交互 */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-              <span className="text-[11px] text-emerald-600 shrink-0">行动：</span>
-              {gameState.location === '宗门大殿' && (
-                <>
-                  {gameState.quests['渡口引魂'] === '待复命' ? (
-                    <button
-                      type="button"
-                      onClick={() => setInputCommand('复命结算')}
-                      className="px-2.5 py-1 rounded bg-amber-900/80 border border-amber-500 text-amber-200 text-xs shrink-0 cursor-pointer font-bold animate-pulse"
-                    >
-                      ★ 交付主线 (+300修为)
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setInputCommand('接主线任务')}
-                      className="px-2 py-1 rounded bg-emerald-950/80 border border-emerald-700 text-emerald-300 text-xs shrink-0 cursor-pointer"
-                    >
-                      接主线「渡口引魂」
+                      渡口引魂 (大决战)
                     </button>
                   )}
                   <button
                     type="button"
-                    onClick={() => setInputCommand('采药搜集灵草')}
-                    className="px-2 py-1 rounded bg-[#0b1410] border border-emerald-800 text-emerald-300 text-xs shrink-0 cursor-pointer"
+                    onClick={() => setInputCommand('打坐')}
+                    className="px-2 py-1 rounded bg-[#070b09] border border-emerald-900 hover:border-emerald-600 text-emerald-400 text-xs shrink-0 cursor-pointer"
                   >
-                    采药 (搜集3味灵草)
+                    打坐恢复
                   </button>
                   <button
                     type="button"
-                    onClick={() => setInputCommand('开炉炼丹')}
-                    className="px-2 py-1 rounded bg-cyan-950/60 border border-cyan-700/70 text-cyan-200 text-xs shrink-0 cursor-pointer"
+                    onClick={() => setInputCommand('向药老请教洗髓丹方')}
+                    className="px-2 py-1 rounded bg-[#070b09] border border-emerald-900 hover:border-emerald-600 text-emerald-400 text-xs shrink-0 cursor-pointer"
                   >
-                    开炉炼丹 (+120修为)
+                    问药老丹方
                   </button>
-                </>
-              )}
-              {gameState.location === '鬼市' && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setInputCommand('置办引魂灯')}
-                    className="px-2 py-1 rounded bg-amber-950/60 border border-amber-700/70 text-amber-200 text-xs shrink-0 cursor-pointer"
-                  >
-                    置办引魂灯 (交易)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setInputCommand('赌命')}
-                    className="px-2 py-1 rounded bg-rose-950/60 border border-rose-700/70 text-rose-200 text-xs shrink-0 cursor-pointer"
-                  >
-                    夜枭赌局 (赌命)
-                  </button>
-                </>
-              )}
-              {gameState.location === '幽冥渡口' && (
-                <button
-                  type="button"
-                  onClick={() => setInputCommand('渡口引魂')}
-                  className="px-2.5 py-1 rounded bg-emerald-900/90 border border-emerald-500 text-emerald-100 text-xs shrink-0 cursor-pointer font-bold animate-pulse"
-                >
-                  渡口引魂 (大决战)
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setInputCommand('打坐')}
-                className="px-2 py-1 rounded bg-[#070b09] border border-emerald-900 hover:border-emerald-600 text-emerald-400 text-xs shrink-0 cursor-pointer"
-              >
-                打坐恢复
-              </button>
-              <button
-                type="button"
-                onClick={() => setInputCommand('向药老请教洗髓丹方')}
-                className="px-2 py-1 rounded bg-[#070b09] border border-emerald-900 hover:border-emerald-600 text-emerald-400 text-xs shrink-0 cursor-pointer"
-              >
-                问药老丹方
-              </button>
-            </div>
+                </div>
 
-            {/* 命令行输入框 */}
-            <form onSubmit={handleSendCommand} className="flex gap-2">
-              <input
-                type="text"
-                value={inputCommand}
-                disabled={!!activeConfirm}
-                onChange={(e) => setInputCommand(e.target.value)}
-                placeholder={
-                  activeConfirm
-                    ? '请先完成上方的生死抉择确认...'
-                    : '输入指令，如：买灯 / 赌命 / 炼丹 / 问药老丹方 / 打坐...'
-                }
-                className="flex-1 bg-[#070b09] border border-emerald-800/80 rounded-md px-3 py-2 text-xs sm:text-sm text-emerald-100 placeholder-emerald-800/70 focus:outline-none focus:border-emerald-400 transition disabled:opacity-50"
-              />
-              <button
-                type="submit"
-                disabled={isLoading || !inputCommand.trim() || !!activeConfirm}
-                className="px-4 py-2 bg-emerald-900 hover:bg-emerald-800 disabled:bg-emerald-950/50 disabled:text-emerald-800 text-emerald-200 rounded-md border border-emerald-700/80 text-xs sm:text-sm font-bold transition cursor-pointer shrink-0"
-              >
-                执行
-              </button>
-            </form>
-          </div>
+                {/* 命令行输入框 */}
+                <form onSubmit={handleSendCommand} className="flex gap-2 pt-0.5">
+                  <input
+                    type="text"
+                    value={inputCommand}
+                    disabled={!!activeConfirm}
+                    onChange={(e) => setInputCommand(e.target.value)}
+                    placeholder={
+                      activeConfirm
+                        ? '请先完成上方聊天框内的生死抉择确认...'
+                        : '输入指令，如：买灯 / 赌命 / 炼丹 / 问药老丹方 / 打坐...'
+                    }
+                    className="flex-1 bg-[#070b09] border border-emerald-800/80 rounded-md px-3 py-2 text-xs sm:text-sm text-emerald-100 placeholder-emerald-800/70 focus:outline-none focus:border-emerald-400 transition disabled:opacity-50"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isLoading || !inputCommand.trim() || !!activeConfirm}
+                    className="px-4 py-2 bg-emerald-900 hover:bg-emerald-800 disabled:bg-emerald-950/50 disabled:text-emerald-800 text-emerald-200 rounded-md border border-emerald-700/80 text-xs sm:text-sm font-bold transition cursor-pointer shrink-0"
+                  >
+                    执行
+                  </button>
+                </form>
+              </>
+            }
+          />
         </div>
       )}
     </main>

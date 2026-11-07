@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export interface TerminalMessage {
   id: string;
@@ -15,6 +15,9 @@ interface TerminalProps {
   isTyping: boolean;
   onSkipTypewriter?: () => void;
   onSelectOption?: (option: string) => void;
+  confirmCard?: React.ReactNode;
+  footer?: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export default function Terminal({
@@ -22,20 +25,23 @@ export default function Terminal({
   isTyping,
   onSkipTypewriter,
   onSelectOption,
+  confirmCard,
+  footer,
+  children,
 }: TerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 每次消息更新或打字机推进时保持滚动在底部
+  // 每次消息更新、打字机推进或确认卡出现时，保持滚动在底部
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
-  }, [messages, isTyping]);
+  }, [messages, isTyping, confirmCard]);
 
   return (
     <div className="relative flex-1 flex flex-col min-h-0 bg-[#070b09] border border-emerald-950/80 rounded-lg overflow-hidden shadow-inner font-mono text-sm">
       {/* 终端顶栏装饰与跳过按钮 */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-[#0b120e] border-b border-emerald-950 text-xs text-emerald-500/70 select-none">
+      <div className="shrink-0 flex items-center justify-between px-3 py-1.5 bg-[#0b120e] border-b border-emerald-950 text-xs text-emerald-500/70 select-none">
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-900 border border-emerald-700/50 inline-block animate-pulse" />
           <span>永宁州·幽冥传真终端</span>
@@ -51,7 +57,7 @@ export default function Terminal({
         )}
       </div>
 
-      {/* 终端消息区 */}
+      {/* 终端消息区（唯一滚动区域） */}
       <div
         ref={containerRef}
         className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 scroll-smooth text-slate-200"
@@ -112,7 +118,22 @@ export default function Terminal({
             </div>
           );
         })}
+
+        {/* 关键抉择人工确认卡：位于消息流最底部（最新消息之后） */}
+        {confirmCard && (
+          <div className="pt-2">
+            {confirmCard}
+          </div>
+        )}
       </div>
+
+      {/* 终端内部常驻底部控制区（地点穿梭 + 快捷行动 + 输入框） */}
+      {(footer || children) && (
+        <div className="shrink-0 border-t border-emerald-950 bg-[#0c120f] p-2.5 sm:p-3 space-y-2">
+          {footer}
+          {children}
+        </div>
+      )}
     </div>
   );
 }
