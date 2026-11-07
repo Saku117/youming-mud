@@ -307,9 +307,9 @@ export default function MudPage() {
   }
 
   return (
-    <main className="min-h-[100dvh] bg-[#070b09] text-emerald-100 flex flex-col p-2 sm:p-4 max-w-4xl mx-auto font-mono selection:bg-emerald-900 selection:text-emerald-200">
+    <main className="h-dvh overflow-hidden bg-[#070b09] text-emerald-100 flex flex-col p-2 sm:p-4 max-w-4xl mx-auto font-mono selection:bg-emerald-900 selection:text-emerald-200">
       {/* 顶部标题区 */}
-      <div className="flex items-center justify-between py-2 border-b border-emerald-950 text-xs sm:text-sm">
+      <div className="shrink-0 flex items-center justify-between py-2 border-b border-emerald-950 text-xs sm:text-sm">
         <div className="flex items-center gap-2">
           <span className="text-emerald-500 font-bold text-base sm:text-lg tracking-wider">
             幽冥修仙 MUD
@@ -371,16 +371,20 @@ export default function MudPage() {
         /* 游戏主体界面 */
         <div className="flex-1 flex flex-col min-h-0 space-y-2.5 pt-2">
           {/* 状态栏 */}
-          <StatusBar state={gameState} />
+          <div className="shrink-0">
+            <StatusBar state={gameState} />
+          </div>
 
           {/* 若触发了 Interrupt 确认机制，展示 ConfirmCard */}
           {activeConfirm && (
-            <ConfirmCard
-              data={activeConfirm}
-              onConfirm={handleConfirmAction}
-              onCancel={handleCancelAction}
-              isLoading={isLoading}
-            />
+            <div className="shrink-0">
+              <ConfirmCard
+                data={activeConfirm}
+                onConfirm={handleConfirmAction}
+                onCancel={handleCancelAction}
+                isLoading={isLoading}
+              />
+            </div>
           )}
 
           {/* 终端界面 */}
@@ -391,7 +395,7 @@ export default function MudPage() {
           />
 
           {/* 下部操控区 */}
-          <div className="space-y-2 bg-[#0c120f] border border-emerald-950 p-2.5 sm:p-3 rounded-lg">
+          <div className="shrink-0 space-y-2 bg-[#0c120f] border border-emerald-950 p-2.5 sm:p-3 rounded-lg">
             {/* 三大地点跳转按钮 */}
             <div className="space-y-1">
               <div className="text-[11px] text-emerald-500/80 flex items-center justify-between">
