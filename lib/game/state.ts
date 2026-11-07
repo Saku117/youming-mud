@@ -1,6 +1,16 @@
 export type Realm = '炼气初期' | '炼气中期' | '筑基';
 export type Location = '宗门大殿' | '鬼市' | '幽冥渡口';
-export type QuestStatus = '未接' | '进行中' | '已完成';
+export type QuestStatus =
+  | '未接'
+  | '进行中'
+  | '已得灯'
+  | '待复命'
+  | '搜集灵草'
+  | '灵草已齐'
+  | '已完成'
+  | '已完成(胜)'
+  | '已完成(负)'
+  | string;
 
 export interface GameState {
   name: string;

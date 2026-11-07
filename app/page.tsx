@@ -428,11 +428,46 @@ export default function MudPage() {
             {/* 常用快捷指令 & 剧情核心交互 */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
               <span className="text-[11px] text-emerald-600 shrink-0">行动：</span>
+              {gameState.location === '宗门大殿' && (
+                <>
+                  {gameState.quests['渡口引魂'] === '待复命' ? (
+                    <button
+                      type="button"
+                      onClick={() => setInputCommand('复命结算')}
+                      className="px-2.5 py-1 rounded bg-amber-900/80 border border-amber-500 text-amber-200 text-xs shrink-0 cursor-pointer font-bold animate-pulse"
+                    >
+                      ★ 交付主线 (+300修为)
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setInputCommand('接主线任务')}
+                      className="px-2 py-1 rounded bg-emerald-950/80 border border-emerald-700 text-emerald-300 text-xs shrink-0 cursor-pointer"
+                    >
+                      接主线「渡口引魂」
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setInputCommand('采药搜集灵草')}
+                    className="px-2 py-1 rounded bg-[#0b1410] border border-emerald-800 text-emerald-300 text-xs shrink-0 cursor-pointer"
+                  >
+                    采药 (搜集3味灵草)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInputCommand('开炉炼丹')}
+                    className="px-2 py-1 rounded bg-cyan-950/60 border border-cyan-700/70 text-cyan-200 text-xs shrink-0 cursor-pointer"
+                  >
+                    开炉炼丹 (+120修为)
+                  </button>
+                </>
+              )}
               {gameState.location === '鬼市' && (
                 <>
                   <button
                     type="button"
-                    onClick={() => setInputCommand('买引魂灯')}
+                    onClick={() => setInputCommand('置办引魂灯')}
                     className="px-2 py-1 rounded bg-amber-950/60 border border-amber-700/70 text-amber-200 text-xs shrink-0 cursor-pointer"
                   >
                     置办引魂灯 (交易)
@@ -446,22 +481,13 @@ export default function MudPage() {
                   </button>
                 </>
               )}
-              {gameState.location === '宗门大殿' && (
-                <button
-                  type="button"
-                  onClick={() => setInputCommand('开炉炼丹')}
-                  className="px-2 py-1 rounded bg-cyan-950/60 border border-cyan-700/70 text-cyan-200 text-xs shrink-0 cursor-pointer"
-                >
-                  开炉炼丹 (洗髓丹)
-                </button>
-              )}
               {gameState.location === '幽冥渡口' && (
                 <button
                   type="button"
                   onClick={() => setInputCommand('渡口引魂')}
-                  className="px-2 py-1 rounded bg-emerald-950/80 border border-emerald-600/80 text-emerald-200 text-xs shrink-0 cursor-pointer font-bold"
+                  className="px-2.5 py-1 rounded bg-emerald-900/90 border border-emerald-500 text-emerald-100 text-xs shrink-0 cursor-pointer font-bold animate-pulse"
                 >
-                  渡口引魂 (通关决战)
+                  渡口引魂 (大决战)
                 </button>
               )}
               <button
