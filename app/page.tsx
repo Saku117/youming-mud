@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import StatusBar from '@/components/StatusBar';
 import Terminal, { TerminalMessage } from '@/components/Terminal';
+import ConfirmCard, { ConfirmActionData } from '@/components/ConfirmCard';
 import { GameState, Location, createInitialState } from '@/lib/game/state';
 
 const STORAGE_KEY = 'youming_mud_save_v1';
@@ -16,6 +17,7 @@ export default function MudPage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [activeConfirm, setActiveConfirm] = useState<ConfirmActionData | null>(null);
 
   const typewriterTimerRef = useRef<NodeJS.Timeout | null>(null);
   const currentTypingFullTextRef = useRef<string>('');
@@ -62,7 +64,12 @@ export default function MudPage() {
   }, [gameState, messages, isLoaded]);
 
   // 打字机核心逻辑
-  const startTypewriter = (msgId: string, fullText: string, sender: 'narrative' | 'npc' = 'narrative', speaker?: string) => {
+  const startTypewriter = (
+    msgId: string,
+    fullText: string,
+    sender: 'narrative' | 'npc' | 'system' = 'narrative',
+    speaker?: string
+  ) => {
     if (typewriterTimerRef.current) {
       clearInterval(typewriterTimerRef.current);
     }
@@ -72,14 +79,13 @@ export default function MudPage() {
     setIsTyping(true);
 
     let charIndex = 0;
-    // 先添加一条空内容消息占位
     setMessages((prev) => [
       ...prev,
       { id: msgId, sender, speaker, text: '' },
     ]);
 
     typewriterTimerRef.current = setInterval(() => {
-      charIndex += 2; // 步长 2 字，既流畅又不显迟缓
+      charIndex += 2;
       if (charIndex >= fullText.length) {
         clearInterval(typewriterTimerRef.current!);
         typewriterTimerRef.current = null;
@@ -93,7 +99,7 @@ export default function MudPage() {
           prev.map((m) => (m.id === msgId ? { ...m, text: partial } : m))
         );
       }
-    }, 20);
+    }, 18);
   };
 
   // 跳过打字机
@@ -147,10 +153,9 @@ export default function MudPage() {
 
   // 地点移动
   const handleMove = async (target: Location) => {
-    if (!gameState || isLoading || isTyping) return;
+    if (!gameState || isLoading || isTyping || activeConfirm) return;
     if (target === gameState.location) return;
 
-    // 先插入玩家行动提示
     const playerMsgId = `player-move-${Date.now()}`;
     setMessages((prev) => [
       ...prev,
@@ -194,7 +199,6 @@ export default function MudPage() {
       handleSkipTypewriter();
     }
 
-    // 记录玩家输入
     const pId = `cmd-${Date.now()}`;
     setMessages((prev) => [...prev, { id: pId, sender: 'player', text: cmd }]);
 
@@ -209,10 +213,23 @@ export default function MudPage() {
         }),
       });
       const data = await res.json();
+
+      // 若触发了关键副作用操作，弹出 Interrupt 确认卡
+      if (data.interrupt && data.confirmData) {
+        setActiveConfirm(data.confirmData);
+        startTypewriter(`interrupt-prompt-${Date.now()}`, data.narrative, 'system');
+        return;
+      }
+
       if (data.state) {
         setGameState(data.state);
       }
-      startTypewriter(`cmd-res-${Date.now()}`, data.narrative, 'narrative');
+      startTypewriter(
+        `cmd-res-${Date.now()}`,
+        data.narrative,
+        data.activeNpc ? 'npc' : 'narrative',
+        data.activeNpc
+      );
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -221,6 +238,50 @@ export default function MudPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Interrupt 确认执行
+  const handleConfirmAction = async (data: ConfirmActionData) => {
+    if (!gameState || isLoading) return;
+    setIsLoading(true);
+
+    try {
+      const res = await fetch('/api/play', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'confirm',
+          confirmData: data,
+          state: gameState,
+        }),
+      });
+      const result = await res.json();
+      if (result.state) {
+        setGameState(result.state);
+      }
+      setActiveConfirm(null);
+      startTypewriter(`confirm-res-${Date.now()}`, result.narrative, 'narrative');
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { id: `err-${Date.now()}`, sender: 'system', text: '天机反噬，操作中断。' },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Interrupt 取消执行（状态保持完全不变）
+  const handleCancelAction = () => {
+    setActiveConfirm(null);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `cancel-${Date.now()}`,
+        sender: 'system',
+        text: '你权衡利弊后收手不发，取消了本次决断。气血灵力无损，一切如常。',
+      },
+    ]);
   };
 
   // 重新轮回（清除存档）
@@ -232,6 +293,7 @@ export default function MudPage() {
       localStorage.removeItem(STORAGE_KEY);
       setGameState(null);
       setMessages([]);
+      setActiveConfirm(null);
       setIsTyping(false);
     }
   };
@@ -311,6 +373,16 @@ export default function MudPage() {
           {/* 状态栏 */}
           <StatusBar state={gameState} />
 
+          {/* 若触发了 Interrupt 确认机制，展示 ConfirmCard */}
+          {activeConfirm && (
+            <ConfirmCard
+              data={activeConfirm}
+              onConfirm={handleConfirmAction}
+              onCancel={handleCancelAction}
+              isLoading={isLoading}
+            />
+          )}
+
           {/* 终端界面 */}
           <Terminal
             messages={messages}
@@ -333,7 +405,7 @@ export default function MudPage() {
                     <button
                       key={loc}
                       type="button"
-                      disabled={isCurrent || isLoading || gameState.energy < 1}
+                      disabled={isCurrent || isLoading || gameState.energy < 1 || !!activeConfirm}
                       onClick={() => handleMove(loc)}
                       className={`py-2 px-1 text-xs sm:text-sm font-semibold rounded-md border transition flex flex-col items-center justify-center cursor-pointer ${
                         isCurrent
@@ -353,26 +425,58 @@ export default function MudPage() {
               </div>
             </div>
 
-            {/* 常用快捷指令 */}
+            {/* 常用快捷指令 & 剧情核心交互 */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-              <span className="text-[11px] text-emerald-600 shrink-0">快捷：</span>
+              <span className="text-[11px] text-emerald-600 shrink-0">行动：</span>
+              {gameState.location === '鬼市' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setInputCommand('买引魂灯')}
+                    className="px-2 py-1 rounded bg-amber-950/60 border border-amber-700/70 text-amber-200 text-xs shrink-0 cursor-pointer"
+                  >
+                    置办引魂灯 (交易)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInputCommand('赌命')}
+                    className="px-2 py-1 rounded bg-rose-950/60 border border-rose-700/70 text-rose-200 text-xs shrink-0 cursor-pointer"
+                  >
+                    夜枭赌局 (赌命)
+                  </button>
+                </>
+              )}
+              {gameState.location === '宗门大殿' && (
+                <button
+                  type="button"
+                  onClick={() => setInputCommand('开炉炼丹')}
+                  className="px-2 py-1 rounded bg-cyan-950/60 border border-cyan-700/70 text-cyan-200 text-xs shrink-0 cursor-pointer"
+                >
+                  开炉炼丹 (洗髓丹)
+                </button>
+              )}
+              {gameState.location === '幽冥渡口' && (
+                <button
+                  type="button"
+                  onClick={() => setInputCommand('渡口引魂')}
+                  className="px-2 py-1 rounded bg-emerald-950/80 border border-emerald-600/80 text-emerald-200 text-xs shrink-0 cursor-pointer font-bold"
+                >
+                  渡口引魂 (通关决战)
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => {
-                  setInputCommand('打坐');
-                }}
+                onClick={() => setInputCommand('打坐')}
                 className="px-2 py-1 rounded bg-[#070b09] border border-emerald-900 hover:border-emerald-600 text-emerald-400 text-xs shrink-0 cursor-pointer"
               >
                 打坐恢复
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setInputCommand('查看四周');
-                }}
+                onClick={() => setInputCommand('向药老请教洗髓丹方')}
                 className="px-2 py-1 rounded bg-[#070b09] border border-emerald-900 hover:border-emerald-600 text-emerald-400 text-xs shrink-0 cursor-pointer"
               >
-                查看四周
+                问药老丹方
               </button>
             </div>
 
@@ -381,13 +485,18 @@ export default function MudPage() {
               <input
                 type="text"
                 value={inputCommand}
+                disabled={!!activeConfirm}
                 onChange={(e) => setInputCommand(e.target.value)}
-                placeholder="输入指令，如：去 鬼市 / 打坐 / 查看四周..."
-                className="flex-1 bg-[#070b09] border border-emerald-800/80 rounded-md px-3 py-2 text-xs sm:text-sm text-emerald-100 placeholder-emerald-800/70 focus:outline-none focus:border-emerald-400 transition"
+                placeholder={
+                  activeConfirm
+                    ? '请先完成上方的生死抉择确认...'
+                    : '输入指令，如：买灯 / 赌命 / 炼丹 / 问药老丹方 / 打坐...'
+                }
+                className="flex-1 bg-[#070b09] border border-emerald-800/80 rounded-md px-3 py-2 text-xs sm:text-sm text-emerald-100 placeholder-emerald-800/70 focus:outline-none focus:border-emerald-400 transition disabled:opacity-50"
               />
               <button
                 type="submit"
-                disabled={isLoading || !inputCommand.trim()}
+                disabled={isLoading || !inputCommand.trim() || !!activeConfirm}
                 className="px-4 py-2 bg-emerald-900 hover:bg-emerald-800 disabled:bg-emerald-950/50 disabled:text-emerald-800 text-emerald-200 rounded-md border border-emerald-700/80 text-xs sm:text-sm font-bold transition cursor-pointer shrink-0"
               >
                 执行

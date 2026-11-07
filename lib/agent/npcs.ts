@@ -1,6 +1,7 @@
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
 import { GameState } from '../game/state';
+import { searchKnowledge, KNOWLEDGE_BASE } from '../game/knowledge';
 
 // 藏经阁严苛知识库（药老 RAG 检索源，有记载方可告知，无记载绝不胡诌）
 export const SUTRA_KNOWLEDGE_BASE: Record<string, string> = {
@@ -90,29 +91,30 @@ export const get_player_state = tool(
  */
 export const search_knowledge = tool(
   async ({ query }) => {
-    const trimmed = query.trim();
-    // 严格知识库匹配：先查再答，无记载则绝不可凭空捏造
-    for (const [key, record] of Object.entries(SUTRA_KNOWLEDGE_BASE)) {
-      if (trimmed.includes(key) || key.includes(trimmed)) {
-        return JSON.stringify({
-          found: true,
-          query: trimmed,
-          source: '宗门藏经阁玉简',
-          content: record,
-        });
-      }
+    const res = searchKnowledge(query);
+    if (res.found && res.item) {
+      return JSON.stringify({
+        found: true,
+        query,
+        source: res.item.source,
+        name: res.item.name,
+        ingredients: res.item.ingredients,
+        effect: res.item.effect,
+        content: res.message,
+        message: res.message,
+      });
     }
     return JSON.stringify({
       found: false,
-      query: trimmed,
-      message: '藏经阁无此记载。老夫翻遍古籍亦未曾见过此方，不可妄言！',
+      query,
+      message: '藏经阁无此记载',
     });
   },
   {
     name: 'search_knowledge',
-    description: '在宗门藏经阁玉简库检索丹方、药理或修仙功法。必须先检索再作答；无记载时严格返回无记载',
+    description: '在宗门藏经阁玉简库检索丹方、药理或修仙功法。必须先检索再作答；无记载时严格返回藏经阁无此记载',
     schema: z.object({
-      query: z.string().describe('要检索的丹药、功法或药材名称，例如：洗髓丹、聚气散、引魂之法、天雷诀'),
+      query: z.string().describe('要检索的丹药、功法或药材名称，例如：洗髓丹、聚气散、筑基丹、引魂之法、天雷诀'),
     }),
   }
 );
